@@ -52,6 +52,36 @@ def make_okta_error(errorCode, extra=False):
     return template
 
 
+def make_okta_template(name):
+    template = {
+        "id": "Mocked-{}".format(name),
+        "objectClass": ["okta:user_group"],
+        "type": "OKTA_GROUP",
+        "profile": {
+            "name": name,
+            "description": "Mocked Group {}".format(name)
+        },
+        "_links": {
+            "logo": [
+                {"name": "medium",
+                 "href": "http://example.com/img.png",
+                 "type": "image/png"},
+                {"name": "large",
+                 "href": "http://example.com/img.png",
+                 "type": "image/png"}],
+            "users": {
+                # "https://example.com/api/v1/groups/456ABCD/users"
+                "href": "http://example.com/mocked-not-implemented"
+            },
+            "apps": {
+                # "https://example.com/api/v1/groups/456ABCD/users"
+                "href": "http://example.com/mocked-not-implemented"
+            }
+        }
+    }
+    return template
+
+
 @app.route("/")
 def hello():
     return "Hello World!"
@@ -152,6 +182,16 @@ def users_get(username):
     return Response(json.dumps(rv), status=status, mimetype='application/json')
 
 
+@app.route("/api/v1/users/<id>/groups")
+def users_groups(id):
+    rv = []
+    for group_name in ['Everyone', 'StoreManager', 'Test1', 'Test2']:
+        group = make_okta_template(group_name)
+        rv.append(group)
+    status = 200
+    return Response(json.dumps(rv), status=status, mimetype='application/json')
+
+
 @app.route("/api/v1/users/<id>/appLinks")
 def users_applinks(id):
     object = [
@@ -224,7 +264,17 @@ def users_credentials_change_password(user_id):
     return Response(rv, status=status, mimetype='application/json')
 
 
+@app.route("/api/v1/groups")
+def groups():
+    rv = []
+    for group_name in ['Everyone', 'StoreManager', 'Test1', 'Test2']:
+        group = make_okta_template(group_name)
+        rv.append(group)
+    status = 200
+    return Response(json.dumps(rv), status=status, mimetype='application/json')
+
 if __name__ == "__main__":
     app.debug = True
+    # app.run("172.16.32.1")
     app.run("0.0.0.0")
     # app.run()
