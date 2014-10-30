@@ -1,19 +1,18 @@
-from flask import Flask
-from flask import request
-from flask import Response
 from hashlib import md5
 import json
-app = Flask(__name__)
+import os
 
-prefix = '/api/vi'
+from flask import Flask
+from flask import Response
+from flask import request
+
+app = Flask(__name__)
 
 user_store = {
     'bugs@example.com': 'Password1'
     }
 
-data = {
-    'data': 0
-    }
+group_names = ['Everyone', 'StoreManager', 'Test1', 'Test2']
 
 errors = {
     "E0000001": {
@@ -82,33 +81,24 @@ def make_okta_template(name):
     return template
 
 
+def userid_from_username(username):
+    return md5(username).hexdigest()
+
+
 @app.route("/")
 def hello():
     return "Hello World!"
 
 
-@app.route("/add")
-def add():
-    data["data"] += 1
-    return "Value: {}".format(data['data'])
-
-
-@app.route("/view")
-def view():
-    return "Value: {}".format(data['data'])
-
-
 @app.route("/api/v1/users", methods=['POST'])
 def users_create():
     data = request.get_json()
-    print data
     username = data['profile']['email']
     password = data['credentials']['password']['value']
+    userid = userid_from_username(username)
 
-    rvFailure = make_okta_error("E0000001")
-
-    rvSuccess = {
-        "id": "00u2vgou9lPHZELCZKKO",
+    success = {
+        "id": userid,
         "status": "STAGED",
         "transitioningToStatus": "ACTIVE",
         "created": "2014-10-29T17:02:03.000Z",
@@ -128,12 +118,12 @@ def users_create():
         "_links": {}
         }
 
-    rv = rvFailure
+    rv = make_okta_error("E0000001")
     status = 400
 
     if username not in user_store:
         user_store[username] = password
-        rv = rvSuccess
+        rv = success
         rv['profile'] = data['profile']
         status = 200
 
@@ -144,9 +134,9 @@ def users_create():
 
 @app.route("/api/v1/users/<username>")
 def users_get(username):
-    id = md5(username).hexdigest()
-    rvSuccess = {
-        "id": id,
+    userid = userid_from_username(username)
+    success = {
+        "id": userid,
         "status": "ACTIVE",
         "created": "2013-06-24T16:39:18.000Z",
         "activated": "2013-06-24T16:39:19.000Z",
@@ -177,9 +167,11 @@ def users_get(username):
     status = 404
 
     if username in user_store:
-        rv = rvSuccess
+        rv = success
         status = 200
-    return Response(json.dumps(rv), status=status, mimetype='application/json')
+    return Response(json.dumps(rv),
+                    status=status,
+                    mimetype='application/json')
 
 
 @app.route("/api/v1/users/<id>/groups")
@@ -189,26 +181,29 @@ def users_groups(id):
         group = make_okta_template(group_name)
         rv.append(group)
     status = 200
-    return Response(json.dumps(rv), status=status, mimetype='application/json')
+    return Response(json.dumps(rv),
+                    status=status,
+                    mimetype='application/json')
 
 
 @app.route("/api/v1/users/<id>/appLinks")
 def users_applinks(id):
     object = [
         {
-            "id": "00ub0oNGTSWTBKOLGLNR",
-            "label": "Google Apps Mail",
+            "id": "0MockedAppLinksId",
+            "label": "Mocked App Name",
             "linkUrl": "https://example.com/linkUrl",
             "logoUrl": "https://example.com/logoUrl",
-            "appName": "google",
-            "appInstanceId": "0oa3omz2i9XRNSRIHBZO",
-            "appAssignmentId": "0ua3omz7weMMMQJERBKY",
+            "appName": "mockedapp",
+            "appInstanceId": "0MockedAppInstanceId",
+            "appAssignmentId": "0MockedAppInstanceId",
             "credentialsSetup": False,
             "hidden": False,
             "sortOrder": 0
         }
     ]
-    return Response(json.dumps(object),  mimetype='application/json')
+    return Response(json.dumps(object),
+                    mimetype='application/json')
 
 
 @app.route("/api/v1/sessions", methods=["GET", "POST"])
@@ -216,20 +211,22 @@ def sessions():
     data = request.get_json()
     username = data['username']
     password = data['password']
+    userid = userid_from_username(username)
 
     objectSuccess = {
-        "id": "000kYk6cDF7R02z4PxV5mhL4g",
-        "userId": "00u9apFCRAIKHVPZLGXT",
+        "id": "0MockedSessionId",
+        "userId": userid,
         "mfaActive": False,
         "cookieToken": "MockedCookieToken"
     }
 
     rv = make_okta_error("E0000004")
     status = 401
+
     if username in user_store and user_store[username] == password:
         rv = objectSuccess
         status = 200
-    print "Data: {}, Status: {}".format(data, status)
+
     return Response(json.dumps(rv),
                     status=status,
                     mimetype='application/json')
@@ -250,16 +247,14 @@ def users_credentials_change_password(user_id):
 
     # FIXME: This is different from here!
     # http://developer.okta.com/docs/api/rest/users.html#change-password
-    rvSuccess = {}
+    success = {}
 
     rv = make_okta_error("E0000014")
     status = 403
 
-    print "New password: {}".format(new_password)
-
     if new_password != "invalid":
         status = 200
-        rv = rvSuccess
+        rv = success
 
     return Response(rv, status=status, mimetype='application/json')
 
@@ -267,14 +262,17 @@ def users_credentials_change_password(user_id):
 @app.route("/api/v1/groups")
 def groups():
     rv = []
-    for group_name in ['Everyone', 'StoreManager', 'Test1', 'Test2']:
+    for group_name in group_names:
         group = make_okta_template(group_name)
         rv.append(group)
     status = 200
-    return Response(json.dumps(rv), status=status, mimetype='application/json')
+    return Response(json.dumps(rv),
+                    status=status,
+                    mimetype='application/json')
 
 if __name__ == "__main__":
-    app.debug = True
-    # app.run("172.16.32.1")
-    app.run("0.0.0.0")
-    # app.run()
+    # Bind to PORT if defined, otherwise default to 5000.
+    port = int(os.environ.get('PORT', 5000))
+    if port == 5000:
+        app.debug = True
+    app.run(host='0.0.0.0', port=port)
