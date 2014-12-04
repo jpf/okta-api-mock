@@ -8,9 +8,36 @@ from flask import request
 
 app = Flask(__name__)
 
-user_store = {
-    'bugs@example.com': 'Password1'
+users = {
+    'Fox.Mulder@ic.fbi.example.com': {
+        'password': 'trustno1',
+        'profile': {
+            'login': 'Fox.Mulder@ic.fbi.example.com',
+            'firstName': 'Fox',
+            'lastName': 'Mulder',
+            'locale': 'en_US',
+            'timeZone': 'America/New_York',
+            }
+        },
+    'bugs@example.com': {
+        'password': 'WhatsUpD0c',
+        'profile': {
+            'login': 'bugs@example.com',
+            'firstName': 'Bugs',
+            'lastName': 'Bunny',
+            'locale': 'en_US',
+            'timeZone': 'America/Los_Angeles',
+            }
+        },
     }
+
+
+def validate_user(username, password):
+    print("u: {}, p: {}".format(username, password))
+    if username in users and users[username]['password'] == password:
+        return users[username]
+    else:
+        return False
 
 group_names = ['Everyone', 'StoreManager', 'Test1', 'Test2']
 
@@ -121,8 +148,10 @@ def users_create():
     rv = make_okta_error("E0000001")
     status = 400
 
-    if username not in user_store:
-        user_store[username] = password
+    if username not in users:
+        users[username] = {}
+        users[username]['password'] = password
+        users[username]['profile'] = data['profile']
         rv = success
         rv['profile'] = data['profile']
         status = 200
@@ -134,9 +163,16 @@ def users_create():
 
 @app.route("/api/v1/users/<username>")
 def users_get(username):
-    userid = userid_from_username(username)
-    success = {
-        "id": userid,
+    rv = make_okta_error("E0000007", extra=username)
+    status = 404
+
+    if username not in users:
+        return Response(json.dumps(rv),
+                        status=status,
+                        mimetype='application/json')
+
+    rv = {
+        "id": userid_from_username(username),
         "status": "ACTIVE",
         "created": "2013-06-24T16:39:18.000Z",
         "activated": "2013-06-24T16:39:19.000Z",
@@ -145,10 +181,10 @@ def users_get(username):
         "lastUpdated": "2013-07-02T21:36:25.344Z",
         "passwordChanged": "2013-07-02T21:36:25.344Z",
         "profile": {
-            "firstName": "FAKE",
-            "lastName": "FAKE",
-            "email": username,
-            "login": username,
+            "firstName": users[username]['profile']['firstName'],
+            "lastName": users[username]['profile']['lastName'],
+            "email": users[username]['profile']['login'],
+            "login": users[username]['profile']['login'],
             "mobilePhone": "415-555-1212"
         },
         "credentials": {
@@ -163,12 +199,7 @@ def users_get(username):
         }
     }
 
-    rv = make_okta_error("E0000007", extra=username)
-    status = 404
-
-    if username in user_store:
-        rv = success
-        status = 200
+    status = 200
     return Response(json.dumps(rv),
                     status=status,
                     mimetype='application/json')
@@ -223,8 +254,42 @@ def sessions():
     rv = make_okta_error("E0000004")
     status = 401
 
-    if username in user_store and user_store[username] == password:
+    user = validate_user(username, password)
+    if user:
         rv = objectSuccess
+        status = 200
+
+    return Response(json.dumps(rv),
+                    status=status,
+                    mimetype='application/json')
+
+
+@app.route("/api/v1/authn", methods=["GET", "POST"])
+def authn():
+    data = request.get_json()
+    username = data['username']
+    password = data['password']
+    userid = userid_from_username(username)
+
+    objectSuccess = {
+        "expiresAt": "2014-11-03T10:15:57.000Z",
+        "status": "SUCCESS",
+        "relayState": "/mocked/relayState",
+        "sessionToken": "MockedSessionToken",
+        "_embedded": {
+            "user": {
+                }
+            }
+        }
+
+    rv = make_okta_error("E0000004")
+    status = 401
+
+    user = validate_user(username, password)
+    if user:
+        rv = objectSuccess
+        rv['_embedded']['id'] = userid
+        rv['_embedded']['profile'] = user['profile']
         status = 200
 
     return Response(json.dumps(rv),
