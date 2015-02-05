@@ -58,6 +58,10 @@ errors = {
     "E0000014": {
         'short': "Update of credentials failed"
         },
+    "E0000068": {
+        'short': "Invalid Passcode/Answer",
+        'long': "Your answer doesn't match our records. Please try again."
+        },
     }
 
 
@@ -491,7 +495,34 @@ def authn_factors():
 
 @app.route("/api/v1/authn/factors/<factor_id>/verify", methods=["POST"])
 def authn_factor_verify(factor_id):
-    print("authn_factor_verify called with: {}".format(factor_id))
+    data = request.get_json()
+    objectSuccess = {
+        "expiresAt": "2014-11-03T10:15:57.100Z",
+        "status": "SUCCESS",
+        "relayState": "/mocked/relayState",
+        "sessionToken": "MockedSessionToken",
+        "_embedded": {
+            "user": {
+                "id": "00ub0oNGTSWTBKOLGLNR",
+                "profile": {
+                    "login": "isaac@example.org",
+                    "firstName": "Isaac",
+                    "lastName": "Brock",
+                    "locale": "en_US",
+                    "timeZone": "America/Los_Angeles"
+                }
+            }
+        }
+    }
+    rv = make_okta_error("E0000068")
+    status = 401
+
+    if data['passCode'] == '123456':
+        rv = objectSuccess
+        status = 200
+    return Response(json.dumps(rv),
+                    status=status,
+                    mimetype='application/json')
 
 
 @app.route("/api/v1/authn/credentials/change_password", methods=["POST"])
