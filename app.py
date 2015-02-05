@@ -5,6 +5,7 @@ import os
 from flask import Flask
 from flask import Response
 from flask import request
+from flask import url_for
 
 app = Flask(__name__)
 
@@ -37,6 +38,7 @@ def validate_user(username, password):
     if username in users and users[username]['password'] == password:
         return users[username]
     else:
+        print("... does not exist")
         return False
 
 group_names = ['Everyone', 'StoreManager', 'Test1', 'Test2']
@@ -217,6 +219,15 @@ def users_groups(id):
                     mimetype='application/json')
 
 
+@app.route("/api/v1/users/<id>/factors/questions")
+def users_factors_questions(id):
+    rv = {}
+    status = 200
+    return Response(json.dumps(rv),
+                    status=status,
+                    mimetype='application/json')
+
+
 @app.route("/api/v1/users/<id>/appLinks")
 def users_applinks(id):
     object = [
@@ -264,6 +275,235 @@ def sessions():
                     mimetype='application/json')
 
 
+def authn_MFA_UNENROLLED():
+    return {
+        "stateToken": "00Z20ZhXVrmyR3z8R-m77BvknHyckWCy5vNwEA6huD",
+        "expiresAt": "2014-11-02T23:44:41.736Z",
+        "status": "MFA_UNENROLLED",
+        "relayState": "/myapp/some/deep/link/i/want/to/return/to",
+        "_embedded": {
+            "user": {
+                "id": "00ub0oNGTSWTBKOLGLNR",
+                "profile": {
+                    "login": "isaac@example.org",
+                    "firstName": "Isaac",
+                    "lastName": "Brock",
+                    "locale": "en_US",
+                    "timeZone": "America/Los_Angeles"
+                }
+            },
+            "factors": [{
+                "factorType": "question",
+                "provider": "OKTA",
+                "_links": {
+                    "questions": {
+                        "href": url_for('users_factors_questions',
+                                        id='00uoy3CXZHSMMJPHYXXP',
+                                        _external=True),
+                        "hints": {"allow": ["GET"]}
+                    },
+                    "enroll": {
+                        "href": url_for('authn_factors', _external=True),
+                        "hints": {"allow": ["POST"]}
+                    }
+                }
+            },
+            {
+                "factorType": "token:software:totp",
+                "provider": "GOOGLE",
+                "_links": {
+                    "enroll": {
+                        "href": url_for('authn_factors', _external=True),
+                        "hints": {"allow": ["POST"]}
+                    }
+                }
+            },
+            {
+                "factorType": "token:software:totp",
+                "provider": "OKTA",
+                "_links": {
+                    "enroll": {
+                        "href": url_for('authn_factors', _external=True),
+                        "hints": {"allow": ["POST"]}
+                    }
+                }
+            },
+            ]
+            },
+        "_links": {
+            "cancel": {
+                "href": "https://your-domain.okta.com/api/v1/authn/cancel",
+                "hints": {"allow": ["POST"]}
+            }
+        }
+    }
+
+
+def authn_PASSWORD_EXPIRED():
+    return {
+        "stateToken": "00s1pd3bZuOv-meJE13hz1B7SZl5EGc14Ii_CTBIYd",
+        "expiresAt": "2014-11-02T23:39:03.319Z",
+        "status": "PASSWORD_EXPIRED",
+        "relayState": "/myapp/some/deep/link/i/want/to/return/to",
+        "_embedded": {
+            "user": {
+                "id": "00ub0oNGTSWTBKOLGLNR",
+                "profile": {
+                    "login": "isaac@example.org",
+                    "firstName": "Isaac",
+                    "lastName": "Brock",
+                    "locale": "en_US",
+                    "timeZone": "America/Los_Angeles"
+                }
+            }
+        },
+        "_links": {
+            "next": {
+                "name": "password",
+                "href": url_for('authn_change_password', _external=True),
+                "hints": {
+                    "allow": ["POST"]
+                }
+            },
+            "cancel": {
+                "href": url_for('authn_cancel', _external=True),
+                "hints": {
+                    "allow": ["POST"]
+                }
+            }
+        }
+    }
+
+
+def authn_MFA_REQUIRED():
+    return {
+        "stateToken": "00FpGOgqHfl-6KZxh1bLXJDz35ENsShIY-lc5XHPzc",
+        "expiresAt": "2014-11-02T23:35:28.269Z",
+        "status": "MFA_REQUIRED",
+        "relayState": "/myapp/some/deep/link/i/want/to/return/to",
+        "_embedded": {
+            "user": {
+                "id": "00ub0oNGTSWTBKOLGLNR",
+                "profile": {
+                    "login": "isaac@example.org",
+                    "firstName": "Isaac",
+                    "lastName": "Brock",
+                    "locale": "en_US",
+                    "timeZone": "America/Los_Angeles"
+                }
+            },
+            "factors": [{
+                "id": "ufsm3jZGDQXPJDEIXZMP",
+                "factorType": "question",
+                "provider": "OKTA",
+                "profile": {
+                    "question": "disliked_food",
+                    "questionText": "What is the food you least like?"
+                },
+                "_links": {
+                    "verify": {
+                        "href": url_for('authn_factor_verify',
+                                        _external=True,
+                                        factor_id='ufsm3jZGDQXPJDEIXZMP'),
+                        "hints": {"allow": ["POST"]}
+                    }
+                }
+            },
+            {
+                "id": "rsalhpMQVYKHZKXZJQEW",
+                "factorType": "token",
+                "provider": "RSA",
+                "profile": {
+                    "credentialId": "isaac@example.org"
+                },
+                "_links": {
+                    "verify": {
+                        "href": url_for('authn_factor_verify',
+                                        _external=True,
+                                        factor_id='rsalhpMQVYKHZKXZJQEW'),
+                        "hints": {"allow": ["POST"]}
+                    }
+                }
+            },
+            {
+                "id": "uftm3iHSGFQXHCUSDAND",
+                "factorType": "token:software:totp",
+                "provider": "GOOGLE",
+                "profile": {
+                    "credentialId": "isaac@example.org"
+                },
+                "_links": {
+                    "verify": {
+                        "href": url_for('authn_factor_verify',
+                                        _external=True,
+                                        factor_id='uftm3iHSGFQXHCUSDAND'),
+                        "hints": {"allow": ["POST"]}
+                    }
+                }
+            },
+            {
+                "id": "ostfm3hPNYSOIOIVTQWY",
+                "factorType": "token:software:totp",
+                "provider": "OKTA",
+                "profile": {
+                    "credentialId": "isaac@example.org"
+                },
+                "_links": {
+                    "verify": {
+                        "href": url_for('authn_factor_verify',
+                                        _external=True,
+                                        factor_id='ostfm3hPNYSOIOIVTQWY'),
+                        "hints": {"allow": ["POST"]}
+                    }
+                }
+            },
+            {
+                "id": "sms193zUBEROPBNZKPPE",
+                "factorType": "sms",
+                "provider": "OKTA",
+                "profile": {
+                    "phoneNumber": "+1 XXX-XXX-1337"
+                },
+                "_links": {
+                    "verify": {
+                        "href": url_for('authn_factor_verify',
+                                        _external=True,
+                                        factor_id='sms193zUBEROPBNZKPPE'),
+                        "hints": {"allow": ["POST"]}
+                    }
+                }
+            }
+        ]
+        },
+        "_links": {
+            "cancel": {
+                "href": url_for('authn_cancel', _external=True),
+                "hints": {"allow": ["POST"]}
+            }
+        }
+    }
+
+
+@app.route("/api/v1/authn/factors", methods=["POST"])
+def authn_factors():
+    pass
+
+
+@app.route("/api/v1/authn/factors/<factor_id>/verify", methods=["POST"])
+def authn_factor_verify(factor_id):
+    print("authn_factor_verify called with: {}".format(factor_id))
+
+
+@app.route("/api/v1/authn/credentials/change_password", methods=["POST"])
+def authn_change_password():
+    pass
+
+
+@app.route("/api/v1/authn/cancel", methods=["POST"])
+def authn_cancel():
+    pass
+
+
 @app.route("/api/v1/authn", methods=["GET", "POST"])
 def authn():
     data = request.get_json()
@@ -290,6 +530,18 @@ def authn():
         rv = objectSuccess
         rv['_embedded']['id'] = userid
         rv['_embedded']['profile'] = user['profile']
+        status = 200
+    elif username == 'user_PASSWORD_EXPIRED@example.com':
+        print("Got {}".format(username))
+        rv = authn_PASSWORD_EXPIRED()
+        status = 200
+    elif username == 'user_MFA_REQUIRED@example.com':
+        print("Got {}".format(username))
+        rv = authn_MFA_REQUIRED()
+        status = 200
+    elif username == 'user_MFA_UNENROLLED@example.com':
+        print("Got {}".format(username))
+        rv = authn_MFA_UNENROLLED()
         status = 200
 
     return Response(json.dumps(rv),
