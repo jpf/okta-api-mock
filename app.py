@@ -343,6 +343,71 @@ def authn_MFA_UNENROLLED():
     }
 
 
+# FIXME: Make sure this is a representative sample
+def authn_MFA_ENROLL():
+    return {
+        "stateToken": "00Z20ZhXVrmyR3z8R-m77BvknHyckWCy5vNwEA6huD",
+        "expiresAt": "2014-11-02T23:44:41.736Z",
+        "status": "MFA_ENROLL",
+        "relayState": "/myapp/some/deep/link/i/want/to/return/to",
+        "_embedded": {
+            "user": {
+                "id": "00ub0oNGTSWTBKOLGLNR",
+                "profile": {
+                    "login": "isaac@example.org",
+                    "firstName": "Isaac",
+                    "lastName": "Brock",
+                    "locale": "en_US",
+                    "timeZone": "America/Los_Angeles"
+                }
+            },
+            "factors": [{
+                "factorType": "question",
+                "provider": "OKTA",
+                "_links": {
+                    "questions": {
+                        "href": url_for('users_factors_questions',
+                                        id='00uoy3CXZHSMMJPHYXXP',
+                                        _external=True),
+                        "hints": {"allow": ["GET"]}
+                    },
+                    "enroll": {
+                        "href": url_for('authn_factors', _external=True),
+                        "hints": {"allow": ["POST"]}
+                    }
+                }
+            },
+            {
+                "factorType": "token:software:totp",
+                "provider": "GOOGLE",
+                "_links": {
+                    "enroll": {
+                        "href": url_for('authn_factors', _external=True),
+                        "hints": {"allow": ["POST"]}
+                    }
+                }
+            },
+            {
+                "factorType": "token:software:totp",
+                "provider": "OKTA",
+                "_links": {
+                    "enroll": {
+                        "href": url_for('authn_factors', _external=True),
+                        "hints": {"allow": ["POST"]}
+                    }
+                }
+            },
+            ]
+            },
+        "_links": {
+            "cancel": {
+                "href": "https://your-domain.okta.com/api/v1/authn/cancel",
+                "hints": {"allow": ["POST"]}
+            }
+        }
+    }
+
+
 def authn_PASSWORD_EXPIRED():
     return {
         "stateToken": "00s1pd3bZuOv-meJE13hz1B7SZl5EGc14Ii_CTBIYd",
@@ -412,8 +477,7 @@ def authn_MFA_REQUIRED():
                         "hints": {"allow": ["POST"]}
                     }
                 }
-            },
-            {
+            }, {
                 "id": "rsalhpMQVYKHZKXZJQEW",
                 "factorType": "token",
                 "provider": "RSA",
@@ -428,8 +492,7 @@ def authn_MFA_REQUIRED():
                         "hints": {"allow": ["POST"]}
                     }
                 }
-            },
-            {
+            }, {
                 "id": "uftm3iHSGFQXHCUSDAND",
                 "factorType": "token:software:totp",
                 "provider": "GOOGLE",
@@ -444,8 +507,7 @@ def authn_MFA_REQUIRED():
                         "hints": {"allow": ["POST"]}
                     }
                 }
-            },
-            {
+            }, {
                 "id": "ostfm3hPNYSOIOIVTQWY",
                 "factorType": "token:software:totp",
                 "provider": "OKTA",
@@ -460,8 +522,7 @@ def authn_MFA_REQUIRED():
                         "hints": {"allow": ["POST"]}
                     }
                 }
-            },
-            {
+            }, {
                 "id": "sms193zUBEROPBNZKPPE",
                 "factorType": "sms",
                 "provider": "OKTA",
@@ -573,6 +634,10 @@ def authn():
     elif username == 'user_MFA_UNENROLLED@example.com':
         print("Got {}".format(username))
         rv = authn_MFA_UNENROLLED()
+        status = 200
+    elif username == 'user_MFA_ENROLL@example.com':
+        print("Got {}".format(username))
+        rv = authn_MFA_ENROLL()
         status = 200
 
     return Response(json.dumps(rv),
