@@ -578,7 +578,7 @@ def authn_factor_verify(factor_id):
     rv = make_okta_error("E0000068")
     status = 401
 
-    if data['passCode'] == '123456':
+    if factor_id == 'ostfm3hPNYSOIOIVTQWY' and data['passCode'] == '123456':
         rv = objectSuccess
         status = 200
     return Response(json.dumps(rv),
