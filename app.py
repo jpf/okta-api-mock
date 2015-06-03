@@ -55,6 +55,9 @@ errors = {
     "E0000007": {
         "short": "Not found: Resource not found: {} (User)"
         },
+    "E0000011": {
+        'short': "Invalid token provided"
+        },
     "E0000014": {
         'short': "Update of credentials failed"
         },
@@ -62,6 +65,10 @@ errors = {
         'short': "Invalid Passcode/Answer",
         'long': "Your answer doesn't match our records. Please try again."
         },
+    "E0000034": {
+        'short': "Forgot password not allowed on specified user.",
+        'long': "Recovery credential not set."
+        }
     }
 
 
@@ -376,8 +383,7 @@ def authn_MFA_ENROLL():
                         "hints": {"allow": ["POST"]}
                     }
                 }
-            },
-            {
+            }, {
                 "factorType": "token:software:totp",
                 "provider": "GOOGLE",
                 "_links": {
@@ -386,8 +392,7 @@ def authn_MFA_ENROLL():
                         "hints": {"allow": ["POST"]}
                     }
                 }
-            },
-            {
+            }, {
                 "factorType": "token:software:totp",
                 "provider": "OKTA",
                 "_links": {
@@ -396,9 +401,8 @@ def authn_MFA_ENROLL():
                         "hints": {"allow": ["POST"]}
                     }
                 }
-            },
-            ]
-            },
+            }]
+        },
         "_links": {
             "cancel": {
                 "href": "https://your-domain.okta.com/api/v1/authn/cancel",
@@ -537,8 +541,7 @@ def authn_MFA_REQUIRED():
                         "hints": {"allow": ["POST"]}
                     }
                 }
-            }
-        ]
+            }]
         },
         "_links": {
             "cancel": {
@@ -547,6 +550,248 @@ def authn_MFA_REQUIRED():
             }
         }
     }
+
+
+def authn_RECOVERY_PASSWORD():
+    return {
+        "expiresAt": "3015-06-10T18:29:32.000Z",
+        "status": "RECOVERY",
+        # FIXME: This should eventually be something dynamic,
+        #        to prevent testers from hard coding tokens.
+        #        Probably should come from  "create_recovery_token()"
+        "recoveryToken": "MockedRecoveryToken",
+        "_embedded": {
+            "user": {
+                "id": "00u2wv6awzNNEBGLANDG",
+                "profile": {
+                    "login": "user_CAN_RECOVER_PASSWORD@example.com",
+                    "firstName": "User",
+                    "lastName": "Canrecoverpassword",
+                    "locale": "en_US",
+                    "timeZone": "America/Los_Angeles"
+                }
+            }
+        },
+        "_links": {
+            "next": {
+                "name": "recovery",
+                "href": url_for('authn_recovery_token',
+                                _external=True),
+                "hints": {
+                    "allow": [
+                        "POST"
+                    ]
+                }
+            },
+            "cancel": {
+                "href": url_for('authn_cancel',
+                                _external=True),
+                "hints": {
+                    "allow": [
+                        "POST"
+                    ]
+                }
+            }
+        }
+    }
+
+
+def authn_RECOVERY_TOKEN():
+    return {
+        "stateToken": "MockedStateToken",
+        "expiresAt": "3015-06-03T18:35:57.269Z",
+        "status": "RECOVERY",
+        "_embedded": {
+            "user": {
+                "id": "00u2wv6awzNNEBGLANDG",
+                "profile": {
+                    "login": "user_CAN_RECOVER_PASSWORD@example.com",
+                    "firstName": "User",
+                    "lastName": "Canrecoverpassword",
+                    "locale": "en_US",
+                    "timeZone": "America/Los_Angeles"
+                },
+                "recovery_question": {
+                    "question": "What is the food you least liked as a child?"
+                }
+            }
+        },
+        "_links": {
+            "next": {
+                "name": "answer",
+                "href": url_for('authn_recovery_answer',
+                                _external=True),
+                "hints": {
+                    "allow": [
+                        "POST"
+                    ]
+                }
+            },
+            "cancel": {
+                "href": url_for('authn_cancel',
+                                _external=True),
+                "hints": {
+                    "allow": [
+                        "POST"
+                    ]
+                }
+            }
+        }
+    }
+
+
+def authn_RECOVERY_ANSWER():
+    return {
+        "stateToken": "MockedStateToken",
+        "expiresAt": "3015-06-03T18:39:26.064Z",
+        "status": "PASSWORD_RESET",
+        "_embedded": {
+            "user": {
+                "id": "00u2wv6awzNNEBGLANDG",
+                "profile": {
+                    "login": "user_CAN_RECOVER_PASSWORD@example.com",
+                    "firstName": "User",
+                    "lastName": "Canrecoverpassword",
+                    "locale": "en_US",
+                    "timeZone": "America/Los_Angeles"
+                }
+            }
+        },
+        "_links": {
+            "next": {
+                "name": "resetPassword",
+                "href": url_for('authn_credentials_reset_password',
+                                _external=True),
+                "hints": {
+                    "allow": [
+                        "POST"
+                    ]
+                }
+            },
+            "cancel": {
+                "href": url_for('authn_cancel',
+                                _external=True),
+                "hints": {
+                    "allow": [
+                        "POST"
+                    ]
+                }
+            }
+        }
+    }
+
+
+def object_success():
+    return {
+        "expiresAt": "3014-11-03T10:15:57.100Z",
+        "status": "SUCCESS",
+        "relayState": "/mocked/relayState",
+        "sessionToken": "MockedSessionToken",
+        "_embedded": {
+            "user": {
+                "id": "00u2wv6awzNNEBGLANDG",
+                "profile": {
+                    "login": "user_CAN_RECOVER_PASSWORD@example.org",
+                    "firstName": "User",
+                    "lastName": "Canrecoverpassword",
+                    "locale": "en_US",
+                    "timeZone": "America/Los_Angeles"
+                }
+            }
+        }
+    }
+
+
+@app.route("/api/v1/authn/cancel", methods=["POST"])
+def authn_cancel():
+    pass
+
+
+@app.route("/api/v1/authn/recovery/password", methods=["POST"])
+def authn_recovery_password():
+    data = request.get_json()
+    username = data['username']
+
+    rv = make_okta_error('E0000034')
+    status = 403
+
+    if username == 'user_CAN_RECOVER_PASSWORD@example.com':
+        rv = authn_RECOVERY_PASSWORD()
+        status = 200
+    elif username == 'user_CANT_RECOVER_PASSWORD@example.com':
+        pass
+    return Response(json.dumps(rv),
+                    status=status,
+                    mimetype='application/json')
+
+
+@app.route("/api/v1/authn/recovery/token", methods=["POST"])
+def authn_recovery_token():
+    data = request.get_json()
+    recovery_token = data['recoveryToken']
+
+    rv = make_okta_error("E0000011")
+    status = 401
+
+    # FIXME: This should be validated by a function, say
+    #        "validate_recovery_token()"
+    if recovery_token == 'MockedRecoveryToken':
+        rv = authn_RECOVERY_TOKEN()
+        status = 200
+    return Response(json.dumps(rv),
+                    status=status,
+                    mimetype='application/json')
+
+
+@app.route("/api/v1/authn/recovery/answer", methods=["POST"])
+def authn_recovery_answer():
+    data = request.get_json()
+    state_token = data['stateToken']
+    answer = data['answer']
+
+    # FIXME: Make sure this is the correct error
+    rv = make_okta_error("E0000011")
+    status = 401
+
+    # FIXME: This should be validated by a function, say
+    #        "validate_recovery_token()"
+    if state_token != 'MockedRecoveryToken':
+        pass
+    if answer != 'Candy':
+        rv = make_okta_error("")
+        status = 401
+    else:
+        rv = authn_RECOVERY_ANSWER()
+        status = 200
+    return Response(json.dumps(rv),
+                    status=status,
+                    mimetype='application/json')
+
+
+@app.route("/api/v1/authn/credentials/reset_password", methods=["POST"])
+def authn_credentials_reset_password():
+    data = request.get_json()
+    state_token = data['stateToken']
+    new_password = data['newPassword']
+
+    # FIXME: Make sure this is the correct error
+    rv = make_okta_error("E0000011")
+    status = 401
+
+    # FIXME: This should be validated by a function, say
+    #        "validate_recovery_token()"
+    if state_token != 'MockedRecoveryToken':
+        pass
+    # FIXME: Add this feature
+    # if !valid(new_password):
+    #     rv = make_okta_error("")
+    #     status = 401
+    else:
+        rv = object_success()
+        status = 200
+    return Response(json.dumps(rv),
+                    status=status,
+                    mimetype='application/json')
 
 
 @app.route("/api/v1/authn/factors", methods=["POST"])
