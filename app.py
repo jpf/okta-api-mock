@@ -702,11 +702,6 @@ def object_success():
     }
 
 
-@app.route("/api/v1/authn/cancel", methods=["POST"])
-def authn_cancel():
-    pass
-
-
 @app.route("/api/v1/authn/recovery/password", methods=["POST"])
 def authn_recovery_password():
     data = request.get_json()
