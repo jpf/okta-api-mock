@@ -14,6 +14,7 @@ users = {
         'password': 'trustno1',
         'profile': {
             'login': 'Fox.Mulder@ic.fbi.example.com',
+            'email': 'Fox.Mulder@ic.fbi.example.com',
             'firstName': 'Fox',
             'lastName': 'Mulder',
             'locale': 'en_US',
@@ -24,6 +25,7 @@ users = {
         'password': 'WhatsUpD0c',
         'profile': {
             'login': 'bugs@example.com',
+            'email': 'bugs@example.com',
             'firstName': 'Bugs',
             'lastName': 'Bunny',
             'locale': 'en_US',
