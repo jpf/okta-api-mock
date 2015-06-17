@@ -122,7 +122,9 @@ def make_okta_template(name):
 
 
 def userid_from_username(username):
-    return md5(username).hexdigest()
+    username_md5 = md5(username).hexdigest()
+    uid = "mock_id_{}".format(username_md5)
+    return uid
 
 
 @app.route("/")
@@ -130,11 +132,18 @@ def hello():
     return "Hello World!"
 
 
+@app.route("/api/v1/users/", methods=['POST'])
+def users_create_dir():
+    return users_create()
+
+
 @app.route("/api/v1/users", methods=['POST'])
 def users_create():
     data = request.get_json()
     username = data['profile']['email']
-    password = data['credentials']['password']['value']
+    password = False
+    if 'credentials' in data:
+        password = data['credentials']['password']['value']
     userid = userid_from_username(username)
 
     success = {
@@ -163,11 +172,13 @@ def users_create():
 
     if username not in users:
         users[username] = {}
-        users[username]['password'] = password
-        users[username]['profile'] = data['profile']
         rv = success
-        rv['profile'] = data['profile']
         status = 200
+        if password:
+            users[username]['password'] = password
+        if 'profile' in data:
+            users[username]['profile'] = data['profile']
+            rv['profile'] = data['profile']
 
     return Response(json.dumps(rv),
                     status=status,
@@ -836,6 +847,11 @@ def authn_cancel():
     pass
 
 
+@app.route("/api/v1/authn/", methods=["POST"])
+def authn_slash():
+    return authn()
+
+
 @app.route("/api/v1/authn", methods=["GET", "POST"])
 def authn():
     data = request.get_json()
@@ -884,6 +900,69 @@ def authn():
                     status=status,
                     mimetype='application/json')
 
+
+# {{url}}/api/v1/users/00u2wv6awzNNEBGLANDG/lifecycle/reset_password?sendEmail=false
+    # {
+    #     "resetPasswordUrl": "https://jfranusic.oktapreview.com/reset_password/1IBEyUADkyh40WRZn2-C"
+    # }
+
+# {{url}}/api/v1/users?q=john.doe@example.com
+    # [
+    #     {
+    #         "id": "00u2wv6awzNNEBGLANDG",
+    #         "status": "ACTIVE",
+    #         "created": "2014-11-06T22:11:45.000Z",
+    #         "activated": "2014-11-06T22:11:49.000Z",
+    #         "statusChanged": "2014-11-06T22:11:49.000Z",
+    #         "lastLogin": "2015-06-03T18:36:26.000Z",
+    #         "lastUpdated": "2015-06-03T18:36:26.000Z",
+    #         "passwordChanged": "2015-06-03T18:36:26.000Z",
+    #         "profile": {
+    #             "email": "john.doe@example.com",
+    #             "firstName": "John",
+    #             "lastName": "Doe",
+    #             "login": "john.doe@example.com",
+    #             "mobilePhone": "415-555-1212",
+    #             "secondEmail": null
+    #         },
+    #         "credentials": {
+    #             "password": {},
+    #             "recovery_question": {
+    #                 "question": "What is the food you least liked as a child?"
+    #             },
+    #             "provider": {
+    #                 "type": "OKTA",
+    #                 "name": "OKTA"
+    #             }
+    #         },
+    #         "_links": {
+    #             "resetPassword": {
+    #                 "href": "https://jfranusic.oktapreview.com/api/v1/users/00u2wv6awzNNEBGLANDG/lifecycle/reset_password",
+    #                 "method": "POST"
+    #             },
+    #             "expirePassword": {
+    #                 "href": "https://jfranusic.oktapreview.com/api/v1/users/00u2wv6awzNNEBGLANDG/lifecycle/expire_password",
+    #                 "method": "POST"
+    #             },
+    #             "forgotPassword": {
+    #                 "href": "https://jfranusic.oktapreview.com/api/v1/users/00u2wv6awzNNEBGLANDG/credentials/forgot_password",
+    #                 "method": "POST"
+    #             },
+    #             "changeRecoveryQuestion": {
+    #                 "href": "https://jfranusic.oktapreview.com/api/v1/users/00u2wv6awzNNEBGLANDG/credentials/change_recovery_question",
+    #                 "method": "POST"
+    #             },
+    #             "deactivate": {
+    #                 "href": "https://jfranusic.oktapreview.com/api/v1/users/00u2wv6awzNNEBGLANDG/lifecycle/deactivate",
+    #                 "method": "POST"
+    #             },
+    #             "changePassword": {
+    #                 "href": "https://jfranusic.oktapreview.com/api/v1/users/00u2wv6awzNNEBGLANDG/credentials/change_password",
+    #                 "method": "POST"
+    #             }
+    #         }
+    #     }
+    # ]
 
 @app.route("/api/v1/users/<user_id>/lifecycle/deactivate", methods=['POST'])
 def users_lifecycle_deactivate(user_id):
