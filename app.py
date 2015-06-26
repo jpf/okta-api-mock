@@ -881,6 +881,12 @@ def authn():
         rv['_embedded']['id'] = userid
         rv['_embedded']['profile'] = user['profile']
         status = 200
+    elif username == 'user_no_embedded_profile@example.com':
+        rv = objectSuccess
+        rv['user'] = {
+            'profile': user['profile']
+            }
+        status = 200
     elif username == 'user_PASSWORD_EXPIRED@example.com':
         print("Got {}".format(username))
         rv = authn_PASSWORD_EXPIRED()
