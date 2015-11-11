@@ -849,9 +849,9 @@ def authn_cancel():
     pass
 
 
-@app.route("/api/v1/authn/", methods=["POST"])
-def authn_slash():
-    return authn()
+# @app.route("/api/v1/authn/", methods=["POST"])
+# def authn_slash():
+#     return authn()
 
 
 @app.route("/api/v1/authn", methods=["GET", "POST"])
