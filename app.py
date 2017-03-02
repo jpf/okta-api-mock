@@ -34,6 +34,20 @@ users = {
         },
     }
 
+applications = {
+    '0oa2h3hpc3IVCMSRELLB': {
+        "id": "0oa2h3hpc3IVCMSRELLB",
+        "name": "teamwork_project_manager",
+        "label": "Teamwork Project Manager",
+        "status": "ACTIVE"
+    },
+    '0oa2issdvxCAYMSXTNDZ': {
+        "id": "0oa2issdvxCAYMSXTNDZ",
+        "name": "hipchat",
+        "label": "HipChat - Test",
+        "status": "INACTIVE"
+    }
+}
 
 def validate_user(username, password):
     print("u: {}, p: {}".format(username, password))
@@ -294,6 +308,31 @@ def sessions():
         rv = objectSuccess
         status = 200
 
+    return Response(json.dumps(rv),
+                    status=status,
+                    mimetype='application/json')
+
+
+@app.route("/api/v1/apps/")
+@app.route("/api/v1/apps")
+def apps():
+    return Response(json.dumps(applications.values()),
+                    status=200,
+                    mimetype='application/json')
+
+
+@app.route("/api/v1/apps/<id>")
+def apps_get(id):
+    rv = make_okta_error("E0000007", extra=id)
+    status = 404
+
+    if id not in applications:
+        return Response(json.dumps(rv),
+                        status=status,
+                        mimetype='application/json')
+
+    rv = applications[id]
+    status = 200
     return Response(json.dumps(rv),
                     status=status,
                     mimetype='application/json')
