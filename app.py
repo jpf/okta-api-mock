@@ -7,10 +7,10 @@ from flask import Flask
 from flask import Response
 from flask import request
 from flask import url_for
+import redis
 
 app = Flask(__name__)
-
-mfa_tokens = {}
+r = redis.from_url(os.environ.get('REDIS_URL', 'redis://localhost:6379'))
 
 users = {
     'Fox.Mulder@ic.fbi.example.com': {
@@ -1069,24 +1069,23 @@ def authn_factor_verify(factor_id):
     wait_count = 5
 
     push_count = None
-    if factor_id in mfa_tokens:
-        push_count = mfa_tokens[factor_id]['count']
+    if r.get(factor_id):
+        push_count = int(r.get(factor_id))
     
     # FIXME: Add support for mocked push factor here
     if factor_id == 'ostfm3hPNYSOIOIVTQWY' and data['passCode'] == '123456':
         rv = objectSuccess
         status = 200
     elif push_count > 0:
-        print("Wait count: {}".format(push_count))
-        mfa_tokens[factor_id]['count'] -= 1
+        r.decr(factor_id)
         rv = objectMFACount
         status = 200
     elif push_count == 0:
-        if mfa_tokens[factor_id]['accepted']:
-              rv = objectSuccess
+        if factor_id.endswith('-GOOD'):
+            rv = objectSuccess
         else:
-              rv = objectMFACount
-              rv['factorResult'] = "REJECTED"
+            rv = objectMFACount
+            rv['factorResult'] = "REJECTED"
         status = 200
     return Response(json.dumps(rv),
                     status=status,
@@ -1166,10 +1165,8 @@ def authn():
         print("Got {}".format(username))
         rv = authn_MFA_PUSH()
         unique_id = str(uuid.uuid4())
-        mfa_tokens[unique_id] = {
-            'count': 5,
-            'accepted': True,
-        }
+        unique_id += "-GOOD"
+        r.set(unique_id, 5)
         rv['_embedded']['factors'][0]['id'] = unique_id
         print("Returning {}".format(rv))
         status = 200
@@ -1177,10 +1174,7 @@ def authn():
         print("Got {}".format(username))
         rv = authn_MFA_PUSH()
         unique_id = str(uuid.uuid4())
-        mfa_tokens[unique_id] = {
-            'count': 2,
-            'accepted': False,
-        }
+        r.set(unique_id, 2)
         rv['_embedded']['factors'][0]['id'] = unique_id
         print("Returning {}".format(rv))
         status = 200
