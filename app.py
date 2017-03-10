@@ -1,6 +1,7 @@
 from hashlib import md5
 import json
 import os
+import uuid
 
 from flask import Flask
 from flask import Response
@@ -8,6 +9,8 @@ from flask import request
 from flask import url_for
 
 app = Flask(__name__)
+
+mfa_tokens = {}
 
 users = {
     'Fox.Mulder@ic.fbi.example.com': {
@@ -395,7 +398,7 @@ def authn_MFA_UNENROLLED():
             },
         "_links": {
             "cancel": {
-                "href": "https://your-domain.okta.com/api/v1/authn/cancel",
+                "href": url_for('authn_cancel', _external=True),
                 "hints": {"allow": ["POST"]}
             }
         }
@@ -457,11 +460,197 @@ def authn_MFA_ENROLL():
         },
         "_links": {
             "cancel": {
-                "href": "https://your-domain.okta.com/api/v1/authn/cancel",
+                "href": url_for('authn_cancel', _external=True),
                 "hints": {"allow": ["POST"]}
             }
         }
     }
+
+def authn_MFA_PUSH():
+    return {
+        "stateToken": "MockMFAPushStateToken",
+        "expiresAt": "2017-03-10T01:45:45.000Z",
+        "status": "MFA_REQUIRED",
+        "_embedded": {
+            "user": {
+                "id": "00u66h0ih5jMdLB9p0h7",
+                "passwordChanged": "2016-04-11T20:54:47.000Z",
+                "profile": {
+                    "login": "joe.user@example.com",
+                    "firstName": "Joe",
+                    "lastName": "User",
+                    "locale": "en",
+                    "timeZone": "America/Los_Angeles"
+                }
+            },
+            "factors": [
+                {
+                    "id": "MockPushFactorId",
+                    "factorType": "push",
+                    "provider": "OKTA",
+                    "vendorName": "OKTA",
+                    "profile": {
+                        "credentialId": "joe.user@example.com",
+                        "deviceType": "SmartPhone_IPhone",
+                        "keys": [
+                            {
+                                "kty": "PKIX",
+                                "use": "sig",
+                                "kid": "default",
+                                "x5c": [
+                                    "TODO_MAKE_THIS_A_VALID_X5C"
+                                ]
+                            }
+                        ],
+                        "name": "Android",
+                        "platform": "IOS",
+                        "version": "10.2.1"
+                    },
+                    "_links": {
+                        "verify": {
+                            "href": url_for('authn_factor_verify',
+                                            _external=True,
+                                            factor_id='MockPushFactorId'),
+                            "hints": {
+                                "allow": [
+                                    "POST"
+                                ]
+                            }
+                        }
+                    }
+                },
+                {
+                    "id": "MockedTOTPFactorId",
+                    "factorType": "token:software:totp",
+                    "provider": "OKTA",
+                    "vendorName": "OKTA",
+                    "profile": {
+                        "credentialId": "joe.user@example.com"
+                    },
+                    "_links": {
+                        "verify": {
+                            "href": url_for('authn_factor_verify',
+                                            _external=True,
+                                            factor_id='MockedTOTPFactorId'),
+                            "hints": {
+                                "allow": [
+                                    "POST"
+                                ]
+                            }
+                        }
+                    }
+                }
+            ],
+            "policy": {
+                "allowRememberDevice": True,
+                "rememberDeviceLifetimeInMinutes": 0,
+                "rememberDeviceByDefault": False
+            }
+        },
+        "_links": {
+            "cancel": {
+                "href": url_for('authn_cancel', _external=True),
+                "hints": {
+                    "allow": [
+                        "POST"
+                    ]
+                }
+            }
+        }
+    }
+
+def make_mfa_count_object():
+    return {
+        "stateToken": "MockedMFAPushStateToken",
+        "expiresAt": "2017-03-10T01:15:37.000Z",
+        "status": "MFA_CHALLENGE",
+        "factorResult": "WAITING",
+        "_embedded": {
+            "user": {
+                "id": "00u66h0ih5jMdLB9p0h7",
+                "passwordChanged": "2016-04-11T20:54:47.000Z",
+                "profile": {
+                    "login": "isaac@example.org",
+                    "firstName": "Isaac",
+                    "lastName": "Brock",
+                    "locale": "en",
+                    "timeZone": "America/Los_Angeles"
+                }
+            },
+            "factor": {
+                "id": "MockPushFactorId",
+                "factorType": "push",
+                "provider": "OKTA",
+                "vendorName": "OKTA",
+                "profile": {
+                    "credentialId": "isaac@example.org",
+                    "deviceType": "SmartPhone_IPhone",
+                    "keys": [
+                        {
+                            "kty": "PKIX",
+                            "use": "sig",
+                            "kid": "default",
+                            "x5c": [
+                                "TODO_MAKE_THIS_A_VALID_X5C"
+                            ]
+                        }
+                    ],
+                    "name": "Android",
+                    "platform": "IOS",
+                    "version": "10.1.0"
+                }
+            },
+            "policy": {
+                "allowRememberDevice": True,
+                "rememberDeviceLifetimeInMinutes": 0,
+                "rememberDeviceByDefault": False
+            }
+        },
+        "_links": {
+            "next": {
+                "name": "poll",
+                "href": url_for('authn_factor_verify',
+                                _external=True,
+                                factor_id='abc0de1fghIJ2KlMN3o4'),
+                "hints": {
+                    "allow": [
+                        "POST"
+                    ]
+                }
+            },
+            "cancel": {
+                "href": url_for('authn_cancel', _external=True),
+                "hints": {
+                    "allow": [
+                        "POST"
+                    ]
+                }
+            },
+            "prev": {
+                "href": url_for('authn_prev', _external=True),
+                "hints": {
+                    "allow": [
+                        "POST"
+                    ]
+                }
+            },
+            "resend": [
+                {
+                    "name": "push",
+                    "href": url_for('authn_factor_verify_resend',
+                                        _external=True,
+                                        factor_id='abc0de1fghIJ2KlMN3o4'),
+                    "hints": {
+                        "allow": [
+                            "POST"
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+
+
 
 
 def authn_PASSWORD_EXPIRED():
@@ -846,6 +1035,10 @@ def authn_factors():
     pass
 
 
+@app.route("/api/v1/authn/factors/<factor_id>/verify/resend", methods=["POST"])
+def authn_factor_verify_resend(factor_id):
+    pass
+    
 @app.route("/api/v1/authn/factors/<factor_id>/verify", methods=["POST"])
 def authn_factor_verify(factor_id):
     data = request.get_json()
@@ -867,11 +1060,33 @@ def authn_factor_verify(factor_id):
             }
         }
     }
+    objectMFACount = make_mfa_count_object()
+
     rv = make_okta_error("E0000068")
     status = 401
 
+    # Instead of wait count, we should have a configurable delay
+    wait_count = 5
+
+    push_count = None
+    if factor_id in mfa_tokens:
+        push_count = mfa_tokens[factor_id]['count']
+    
+    # FIXME: Add support for mocked push factor here
     if factor_id == 'ostfm3hPNYSOIOIVTQWY' and data['passCode'] == '123456':
         rv = objectSuccess
+        status = 200
+    elif push_count > 0:
+        print("Wait count: {}".format(push_count))
+        mfa_tokens[factor_id]['count'] -= 1
+        rv = objectMFACount
+        status = 200
+    elif push_count == 0:
+        if mfa_tokens[factor_id]['accepted']:
+              rv = objectSuccess
+        else:
+              rv = objectMFACount
+              rv['factorResult'] = "REJECTED"
         status = 200
     return Response(json.dumps(rv),
                     status=status,
@@ -885,6 +1100,11 @@ def authn_change_password():
 
 @app.route("/api/v1/authn/cancel", methods=["POST"])
 def authn_cancel():
+    pass
+
+
+@app.route("/api/v1/authn/prev", methods=["POST"])
+def authn_prev():
     pass
 
 
@@ -942,74 +1162,33 @@ def authn():
         print("Got {}".format(username))
         rv = authn_MFA_ENROLL()
         status = 200
+    elif username == 'user_MFA_PUSH@example.com':
+        print("Got {}".format(username))
+        rv = authn_MFA_PUSH()
+        unique_id = str(uuid.uuid4())
+        mfa_tokens[unique_id] = {
+            'count': 5,
+            'accepted': True,
+        }
+        rv['_embedded']['factors'][0]['id'] = unique_id
+        print("Returning {}".format(rv))
+        status = 200
+    elif username == 'user_MFA_PUSH_REJECTED@example.com':
+        print("Got {}".format(username))
+        rv = authn_MFA_PUSH()
+        unique_id = str(uuid.uuid4())
+        mfa_tokens[unique_id] = {
+            'count': 2,
+            'accepted': False,
+        }
+        rv['_embedded']['factors'][0]['id'] = unique_id
+        print("Returning {}".format(rv))
+        status = 200
 
     return Response(json.dumps(rv),
                     status=status,
                     mimetype='application/json')
 
-
-# {{url}}/api/v1/users/00u2wv6awzNNEBGLANDG/lifecycle/reset_password?sendEmail=false
-    # {
-    #     "resetPasswordUrl": "https://jfranusic.oktapreview.com/reset_password/1IBEyUADkyh40WRZn2-C"
-    # }
-
-# {{url}}/api/v1/users?q=john.doe@example.com
-    # [
-    #     {
-    #         "id": "00u2wv6awzNNEBGLANDG",
-    #         "status": "ACTIVE",
-    #         "created": "2014-11-06T22:11:45.000Z",
-    #         "activated": "2014-11-06T22:11:49.000Z",
-    #         "statusChanged": "2014-11-06T22:11:49.000Z",
-    #         "lastLogin": "2015-06-03T18:36:26.000Z",
-    #         "lastUpdated": "2015-06-03T18:36:26.000Z",
-    #         "passwordChanged": "2015-06-03T18:36:26.000Z",
-    #         "profile": {
-    #             "email": "john.doe@example.com",
-    #             "firstName": "John",
-    #             "lastName": "Doe",
-    #             "login": "john.doe@example.com",
-    #             "mobilePhone": "415-555-1212",
-    #             "secondEmail": null
-    #         },
-    #         "credentials": {
-    #             "password": {},
-    #             "recovery_question": {
-    #                 "question": "What is the food you least liked as a child?"
-    #             },
-    #             "provider": {
-    #                 "type": "OKTA",
-    #                 "name": "OKTA"
-    #             }
-    #         },
-    #         "_links": {
-    #             "resetPassword": {
-    #                 "href": "https://jfranusic.oktapreview.com/api/v1/users/00u2wv6awzNNEBGLANDG/lifecycle/reset_password",
-    #                 "method": "POST"
-    #             },
-    #             "expirePassword": {
-    #                 "href": "https://jfranusic.oktapreview.com/api/v1/users/00u2wv6awzNNEBGLANDG/lifecycle/expire_password",
-    #                 "method": "POST"
-    #             },
-    #             "forgotPassword": {
-    #                 "href": "https://jfranusic.oktapreview.com/api/v1/users/00u2wv6awzNNEBGLANDG/credentials/forgot_password",
-    #                 "method": "POST"
-    #             },
-    #             "changeRecoveryQuestion": {
-    #                 "href": "https://jfranusic.oktapreview.com/api/v1/users/00u2wv6awzNNEBGLANDG/credentials/change_recovery_question",
-    #                 "method": "POST"
-    #             },
-    #             "deactivate": {
-    #                 "href": "https://jfranusic.oktapreview.com/api/v1/users/00u2wv6awzNNEBGLANDG/lifecycle/deactivate",
-    #                 "method": "POST"
-    #             },
-    #             "changePassword": {
-    #                 "href": "https://jfranusic.oktapreview.com/api/v1/users/00u2wv6awzNNEBGLANDG/credentials/change_password",
-    #                 "method": "POST"
-    #             }
-    #         }
-    #     }
-    # ]
 
 @app.route("/api/v1/users/<user_id>/lifecycle/deactivate", methods=['POST'])
 def users_lifecycle_deactivate(user_id):
